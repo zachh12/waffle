@@ -319,7 +319,7 @@ class DataProcessor():
             t1_file = os.path.join(self.t1_data_dir,"t1_run{}.h5".format(runNumber))
             t2_file = os.path.join(self.t2_data_dir, "t2_run{}.h5".format(runNumber))
             df = pd.read_hdf(t2_file,key="data")
-            tier1 = pd.read_hdf(t1_file,key="data")
+            tier1 = pd.read_hdf(t1_file,key="ORSIS3302DecoderForEnergy")
             df = df.drop({"channel", "energy", "timestamp"}, axis=1)
             df = df.join(tier1)
             df_all_runs.append(df)
@@ -361,11 +361,11 @@ class DataProcessor():
             df_chan["ae"] = (a_vs_e - ae_chan.avse_mean)/ae_chan.avse_std
 
             df_reduced = df_chan[ (df_chan.energy_cal > 1400) ]
-
             df_ae = df_reduced[(df_reduced.ae > -10) & (df_reduced.ae < 40)]
 
             # times = [0.3,0.5,0.7,0.9,0.95]
             times = [0,0.3,0.95]
+
             tp_train, df_ae = calculate_timepoints(df_ae, times, relative_tp=0)
             x_idx = -1
 
@@ -382,7 +382,7 @@ class DataProcessor():
             bin_centers = get_bin_centers(bins)
             idxs_over_50 = hist > 0.1*np.amax(hist)
             first_dt =  bin_centers[np.argmax(idxs_over_50)]
-            last_dt = bin_centers[  len(idxs_over_50) - np.argmax(idxs_over_50[::-1])  ]
+            last_dt = bin_centers[  len(idxs_over_50) - np.argmax(idxs_over_50[::-1]) - 1  ]
 
             train_set = (df_ae.ae>0)&(df_ae.ae<2)&(dt >= first_dt)&(dt < last_dt)
 
@@ -417,12 +417,16 @@ class DataProcessor():
                     df_bin = df_cut[(dt_ae >= b_lo) & (dt_ae<b_hi)]
                     for i, (index, row) in enumerate(df_bin.iterrows()):
                         if i>=50: break
-                        wf = Waveform( row, )
-                        wf.data -= row["bl_int"] + np.arange(len(wf.data))*row["bl_slope"]
-                        wf.data /= row["energy_cal"]
+                        wf = Waveform( row["waveform"], sample_period=10)
+                        #wf.data -= row["bl_int"] + np.arange(len(wf.data))*row["bl_slope"]
+                        #wf.data /= row["energy_cal"]
+
+                        bl_int = np.average(wf.data[0][0:200])
+                        wf.data -= bl_int #+ (np.arange(len(wf.data))*row["bl_slope"])
+                        wf.data /= np.amax(wf.data[0])
+                        wf.data = wf.data[0]
 
                         t0_est = np.argmax(wf.data > 0.95)
-
                         wf_plot = wf.data[t0_est-200:t0_est+100]
 
                         if i == 0:
@@ -461,10 +465,11 @@ class DataProcessor():
             df_bin = df_train[(df_train.drift_time >= b_lo) & (df_train.drift_time<b_hi)]
             for i, (index, row) in enumerate(df_bin.iterrows()):
                 if index in exclude_list: continue
-                wf = Waveform( row, amplitude=row["trap_max"], bl_slope=row["bl_slope"], bl_int=row["bl_int"], t0_estimate=row["t0_est"])
+                wf = Waveform( row["waveform"], amplitude=row["trap_max"], bl_slope=row["bl_slope"], bl_int=row["bl_int"], t0_estimate=row["t0_est"])
                 wf.training_set_index = index
-                baseline_val_arr = np.append(  baseline_val_arr, (wf.data - (row["bl_slope"]*np.arange(len(wf.data))  + row["bl_int"]))[:700]   )
 
+                baseline_val_arr = np.append(  baseline_val_arr, (wf.data[0] - (row["bl_slope"]*np.arange(len(wf.data))  + row["bl_int"]))[:700]   )
+                
                 wfs_saved.append(wf)
                 break
 
@@ -478,8 +483,8 @@ class DataProcessor():
             # print ("Channel {} set:".format(channel))
             for wf in wfs_saved:
                 # print("  index {}".format(wf.training_set_index))
-                plt.plot(wf.data)
-
+                plt.plot(wf.data[0])
+            plt.xlim(200,400)
             plt.savefig("training_plots/chan{}_{}wf_set.png".format(channel, n_waveforms))
 
             # plt.figure()
@@ -494,8 +499,12 @@ def calculate_timepoints(df, time_points, relative_tp=0.5):
     max_val = np.zeros(len(df))
 
     for i, (index, row) in enumerate(df.iterrows()):
+        
         wf_cent = get_waveform(row, doInterp=False)
-        max_idx[i] = np.argmax(wf_cent)
+        try:
+            max_idx[i] = np.argmax(wf_cent)
+        except:
+            continue
         min_val[i] = np.amin(wf_cent)
         max_val[i] = np.amax(wf_cent)
         if max_idx[i] > 350 or min_val[i] > 0.001 or max_val[i] < 0.99:
@@ -528,10 +537,11 @@ def calculate_timepoints(df, time_points, relative_tp=0.5):
 def get_waveform(row, align_tp=0.5, doInterp=True):
     import pygama.transforms as pgt
 
-    wf = Waveform( row, )
-
-    wf.data -= row["bl_int"] + np.arange(len(wf.data))*row["bl_slope"]
-    wf.data /= row["trap_max"]
+    wf = Waveform(row['waveform'], sample_period=10)
+    bl_int = np.average(wf.data[0][0:200])
+    wf.data -= bl_int #+ (np.arange(len(wf.data))*row["bl_slope"])
+    wf.data /= row["trap_max"] - bl_int 
+    wf.data = wf.data[0]
 
     tp = calc_timepoint(wf.data, align_tp, do_interp=True, doNorm=False)
 
