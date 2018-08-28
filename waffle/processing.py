@@ -5,6 +5,7 @@ import sys, os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
+from scipy import stats
 
 import pygama
 from pygama.processing import *
@@ -289,6 +290,26 @@ class DataProcessor():
         df_ae.set_index("channel", drop=False, inplace=True)
         df_ae.to_hdf(self.channel_info_file_name,   key="ae", mode='a')
 
+    def manuel_cal(self, df, save_cal=True):
+        ADC = [2000, 3000]
+        Energies = [1461, 1600]
+        try: os.mkdir("cal_plots")
+        except OSError: pass
+
+        channel = df.channel.unique()[0]
+
+        if channel not in self.detectorChanList:
+            df[self.ecal_name]=-1
+            return df
+
+        f1 = plt.figure(figsize=(16,6))
+        m, b, r_value, p_value, std_err = stats.linregress(Energies, ADC)
+        df[self.ecal_name] = m*df[self.energy_name]+b
+
+        f1.savefig("cal_plots/cal_channel{}.png".format(channel))
+        plt.close(f1)
+
+        return df
 
     def calibrate(self, df, save_cal=True):
 
