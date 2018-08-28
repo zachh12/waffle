@@ -291,8 +291,9 @@ class DataProcessor():
         df_ae.to_hdf(self.channel_info_file_name,   key="ae", mode='a')
 
     def manuel_cal(self, df, save_cal=True):
-        ADC = [2000, 3000]
-        Energies = [1461, 1600]
+
+        ADC = [561, 1015]
+        Energies = [1461, 2641]
         try: os.mkdir("cal_plots")
         except OSError: pass
 
@@ -303,7 +304,8 @@ class DataProcessor():
             return df
 
         f1 = plt.figure(figsize=(16,6))
-        m, b, r_value, p_value, std_err = stats.linregress(Energies, ADC)
+        m, b, r_value, p_value, std_err = stats.linregress(ADC, Energies)
+
         df[self.ecal_name] = m*df[self.energy_name]+b
 
         f1.savefig("cal_plots/cal_channel{}.png".format(channel))
@@ -490,7 +492,7 @@ class DataProcessor():
 
         #energy estimator: pz correct, calc trap
         procs.AddTransform(pz_correct, {"rc":72}, input_waveform="blrmnlc_wf", output_waveform="pz_wf")
-        procs.AddTransform(trap_filter, {"rampTime":400, "flatTime":200}, input_waveform="pz_wf", output_waveform="trap_wf")
+        procs.AddTransform(trap_filter, {"rampTime":400, "flatTime":100}, input_waveform="pz_wf", output_waveform="trap_wf")
 
         procs.AddCalculator(trap_max, {}, input_waveform="trap_wf", output_name="trap_max")
         procs.AddCalculator(trap_max, {"method":"fixed_time","pickoff_sample":400}, input_waveform="trap_wf", output_name="trap_ft")
@@ -549,7 +551,8 @@ class DataProcessor():
         # df["drift_time"] = np.nan
 
         # for channel, df_chan in df.groupby("channel"):
-        channel = df_chan.channel.unique()[0]
+        channel = (df_chan.channel.unique())[0]
+
         ae_chan = df_ae.loc[channel]
         bl_chan = df_bl.loc[channel]
 
@@ -572,7 +575,6 @@ class DataProcessor():
         df_chan["bl_cut"] = bl_cut
 
         #Make a cut based on drift t0-t99 drift time
-
         df_chan["drift_time"] = df_chan[self.dt_max_param] - df_chan["t0est"]
         cut = df_chan["bl_cut"] & (df_chan.ae>0)&(df_chan.ae<2) & (df_chan[self.ecal_name] > min_e)
 
@@ -596,6 +598,7 @@ class DataProcessor():
         pc_fig = plt.figure()
         df_chan["t50_99"] = df_chan.tp_99 - df_chan.tp_50
         df_pc = df_chan[ cut & (df_chan.drift_time >= first_dt) & (df_chan.drift_time <= last_dt) ]
+
         cut_lo, cut_hi, __, __ = pdc.gaussian_cut(df_pc.t50_99, cut_sigma=3, plotAxis = plt.gca())
         plt.xlabel("t50-t99 time")
 
@@ -605,7 +608,7 @@ class DataProcessor():
         weak_cut = df_chan["bl_cut"] & (df_chan.ae>-10)&(df_chan.ae<40) & (df_chan[self.ecal_name] > min_e) & (df_chan.drift_time < dt_max) & (df_chan.drift_time > 0)
 
         df_chan["is_training"] = training_cut
-
+        
         if True:
             f1 = plt.figure()
             grid = gs.GridSpec(2, 2, height_ratios=[3, 1], width_ratios = [1,3])
@@ -628,12 +631,13 @@ class DataProcessor():
 
             try: os.mkdir("training_plots")
             except OSError: pass
+
             f1.savefig("training_plots/chan{}_timepoints".format(channel))
             pc_fig.savefig("training_plots/chan{}_t50-99".format(channel))
             plt.close(f1)
             plt.close(pc_fig)
             # f2.savefig("training_plots/chan{}_waveforms".format(channel))
-
+    
         return df_chan
 
 
@@ -678,7 +682,7 @@ class DataProcessor():
 
                         wf=g4.parse_event_data(row)
                         wf_full = wf.get_waveform()
-                        wf_full -= row["bl_int"] + np.arange(len(wf_full))*row["bl_slope"]
+                        wf_full -= row["bl_int"] + (np.arange(len(wf_full))*row["bl_slope"])
                         wf_full /= row[self.ecal_name]
 
                         # t95_int = int(row[self.dt_max_param])
