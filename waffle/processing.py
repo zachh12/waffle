@@ -540,7 +540,7 @@ def get_waveform(row, align_tp=0.5, doInterp=True):
     wf = Waveform(row['waveform'], sample_period=10)
     bl_int = np.average(wf.data[0][0:200])
     wf.data -= bl_int #+ (np.arange(len(wf.data))*row["bl_slope"])
-    wf.data /= row["trap_max"] - bl_int 
+    wf.data /= (row["trap_max"] - bl_int) 
     wf.data = wf.data[0]
 
     tp = calc_timepoint(wf.data, align_tp, do_interp=True, doNorm=False)
