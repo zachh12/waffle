@@ -49,6 +49,7 @@ class Parameter(object):
         logH = 0
         parameter += (self.lim_hi - self.lim_lo)  *dnest4.randh()
         parameter = dnest4.wrap(parameter, self.lim_lo, self.lim_hi)
+
         return (logH, parameter)
 
 ##

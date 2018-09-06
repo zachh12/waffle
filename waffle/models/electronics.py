@@ -121,6 +121,7 @@ class LowPassFilterModel(DigitalFilterModel):
 class HiPassFilterModel(DigitalFilterModel):
     def __init__(self, detector, order=1, include_zeros=False, pmag_lims=None, pphi_lims=None):
         assert include_zeros == False
+        order = 1
         assert order == 1
 
         if pmag_lims is None: pmag_lims = [60,80]

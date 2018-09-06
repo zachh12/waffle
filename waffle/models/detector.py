@@ -8,6 +8,7 @@ class ImpurityModel(JointModelBase):
     Impurity average and gradient
     """
     def __init__(self,imp_avg_lims, imp_grad_lims):
+
         self.imp_avg_lims = imp_avg_lims
         self.imp_grad_lims = imp_grad_lims
 
@@ -25,8 +26,9 @@ class ImpurityModelEnds(JointModelBase):
     Impurity at both ends of the detector
     """
     def __init__(self,detector):
-        imp_avg_lims = detector.imp_avg_lims
-        imp_grad_lims = detector.imp_grad_lims
+        #THIS???
+        imp_avg_lims = [-.318, .318] #detector.imp_avg_lims
+        imp_grad_lims = [-.025, .025] #detector.imp_grad_lims
         detector_length = detector.detector_length
 
         self.imp_max = np.ceil(-1 * imp_grad_lims[-1] * ((detector_length/10)) *100)/100

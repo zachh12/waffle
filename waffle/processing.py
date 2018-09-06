@@ -31,7 +31,8 @@ class DataProcessor():
         self.energy_name = "trap_max"
         self.ecal_name = "ecal"
         self.current_name = "current_max_5"
-        self.data_key = "ORGretina4MWaveformDecoder"
+        self.data_key = "ORSIS3302DecoderForEnergy"
+        #self.data_key = "ORGretina4MWaveformDecoder"
         self.detectorChanList = detectorChanList
 
         self.dt_max_param = "tp_99"
@@ -291,8 +292,11 @@ class DataProcessor():
         df_ae.to_hdf(self.channel_info_file_name,   key="ae", mode='a')
 
     def manuel_cal(self, df, save_cal=True):
-
-        ADC = [561, 1015]
+        plt.hist(df['trap_max'], bins=500);
+        plt.xlim(0, 2000)
+        plt.show()
+        quit()
+        ADC = [1044, 1830]
         Energies = [1461, 2641]
         try: os.mkdir("cal_plots")
         except OSError: pass
@@ -479,7 +483,7 @@ class DataProcessor():
         #                                         }, input_waveform="waveform", output_waveform="nlc_wf")
 
         #baseline remove
-        procs.AddCalculator(fit_baseline, {"end_index":700}, input_waveform="waveform", output_name=["bl_slope", "bl_int"])
+        procs.AddCalculator(fit_baseline, {"end_index":200}, input_waveform="waveform", output_name=["bl_slope", "bl_int"])
         procs.AddTransform(remove_baseline, {"bl_0":"bl_int", "bl_1":"bl_slope"}, input_waveform="waveform", output_waveform="blrmnlc_wf")
 
         #calculate max currents from baseline-removed wf with a few different sigma vals
@@ -492,7 +496,7 @@ class DataProcessor():
 
         #energy estimator: pz correct, calc trap
         procs.AddTransform(pz_correct, {"rc":72}, input_waveform="blrmnlc_wf", output_waveform="pz_wf")
-        procs.AddTransform(trap_filter, {"rampTime":400, "flatTime":100}, input_waveform="pz_wf", output_waveform="trap_wf")
+        procs.AddTransform(trap_filter, {"rampTime":400, "flatTime":200}, input_waveform="pz_wf", output_waveform="trap_wf")
 
         procs.AddCalculator(trap_max, {}, input_waveform="trap_wf", output_name="trap_max")
         procs.AddCalculator(trap_max, {"method":"fixed_time","pickoff_sample":400}, input_waveform="trap_wf", output_name="trap_ft")
@@ -551,6 +555,8 @@ class DataProcessor():
         # df["drift_time"] = np.nan
 
         # for channel, df_chan in df.groupby("channel"):
+        #print( df_chan.channel.unique()[0] )
+        #quit()
         channel = (df_chan.channel.unique())[0]
 
         ae_chan = df_ae.loc[channel]
@@ -577,7 +583,10 @@ class DataProcessor():
         #Make a cut based on drift t0-t99 drift time
         df_chan["drift_time"] = df_chan[self.dt_max_param] - df_chan["t0est"]
         cut = df_chan["bl_cut"] & (df_chan.ae>0)&(df_chan.ae<2) & (df_chan[self.ecal_name] > min_e)
-
+        plt.close()
+        plt.hist(df_chan["drift_time"], bins=200)
+        plt.show()
+        quit()
         # df_cut = df_cut[(df_cut.drift_time > df_cut.drift_time.quantile(q=0.025))   & (df_cut.drift_time < df_cut.drift_time.quantile(q=0.975)) ]
         dt_max = df_chan[cut].drift_time.quantile(q=0.99)
 
@@ -598,7 +607,6 @@ class DataProcessor():
         pc_fig = plt.figure()
         df_chan["t50_99"] = df_chan.tp_99 - df_chan.tp_50
         df_pc = df_chan[ cut & (df_chan.drift_time >= first_dt) & (df_chan.drift_time <= last_dt) ]
-
         cut_lo, cut_hi, __, __ = pdc.gaussian_cut(df_pc.t50_99, cut_sigma=3, plotAxis = plt.gca())
         plt.xlabel("t50-t99 time")
 
@@ -631,13 +639,12 @@ class DataProcessor():
 
             try: os.mkdir("training_plots")
             except OSError: pass
-
             f1.savefig("training_plots/chan{}_timepoints".format(channel))
             pc_fig.savefig("training_plots/chan{}_t50-99".format(channel))
             plt.close(f1)
             plt.close(pc_fig)
             # f2.savefig("training_plots/chan{}_waveforms".format(channel))
-    
+
         return df_chan
 
 
@@ -667,8 +674,8 @@ class DataProcessor():
         df_train.to_hdf(file_name, key="data", mode='w')
 
         #TODO: if the multisampling params changed in the middle of this run range, you're hosed.
-        g4 = dl.Gretina4MDecoder(t1_file)
-
+        #g4 = dl.Gretina4MDecoder(t1_file)
+        g4 = dl.SIS3302Decoder(t1_file)
         if True:
             for channel, df_chan in df_train.groupby("channel"):
                 n_bins = 10
@@ -723,7 +730,8 @@ class DataProcessor():
                 if index in exclude_list: continue
 
                 t1_file = os.path.join(self.t1_data_dir, "t1_run{}.h5".format(row.runNumber))
-                g4 = dl.Gretina4MDecoder(t1_file)
+                #g4 = dl.Gretina4MDecoder(t1_file)
+                g4 = dl.SIS3302Decoder(t1_file)
                 wf=g4.parse_event_data(row)
 
                 wf.training_set_index = index

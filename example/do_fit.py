@@ -9,7 +9,7 @@ import dnest4
 from waffle.management import LocalFitManager, FitConfiguration
 
 chan_dict = {
-600: "B8482",
+66: "B8482",
 626: "P42574A",
 640:"P42665A",
 648:"P42664A",
@@ -37,7 +37,7 @@ def main(chan, doPlot=False):
     # wf_idxs = [1,4,8,12]
 
     datadir= os.environ['DATADIR']
-    conf_file = datadir +"siggen/config_files/" + conf_name
+    conf_file = datadir +"/siggen/config_files/" + conf_name
 
     wf_conf = {
         "wf_file_name":wf_file,
@@ -77,7 +77,8 @@ def main(chan, doPlot=False):
 
     if os.path.isdir(directory):
         if len(os.listdir(directory)) >0:
-            raise OSError("Directory {} already exists: not gonna over-write it".format(directory))
+            print("Overwriting")
+            #raise OSError("Directory {} already exists: not gonna over-write it".format(directory))
     else:
         os.makedirs(directory)
 
