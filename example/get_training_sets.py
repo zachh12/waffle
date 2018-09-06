@@ -21,9 +21,9 @@ def main():
 
     #Load all runs into one common DF
     df = proc.load_t2(runList)
-    plt.hist(df['trap_max'], bins=200)
-    plt.show()
-    quit()
+    #plt.hist(df['trap_max'], bins=200)
+    #plt.show()
+    #quit()
     df = proc.tag_pulsers(df)
     df = df.groupby("channel").apply(proc.manuel_cal)
     df = df.groupby(["runNumber","channel"]).apply(proc.calculate_previous_event_params, baseline_meas="bl_int")

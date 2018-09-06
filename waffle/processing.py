@@ -32,7 +32,6 @@ class DataProcessor():
         self.ecal_name = "ecal"
         self.current_name = "current_max_5"
         self.data_key = "ORSIS3302DecoderForEnergy"
-        #self.data_key = "ORGretina4MWaveformDecoder"
         self.detectorChanList = detectorChanList
 
         self.dt_max_param = "tp_99"
@@ -292,12 +291,9 @@ class DataProcessor():
         df_ae.to_hdf(self.channel_info_file_name,   key="ae", mode='a')
 
     def manuel_cal(self, df, save_cal=True):
-        plt.hist(df['trap_max'], bins=500);
-        plt.xlim(0, 2000)
-        plt.show()
-        quit()
-        ADC = [1044, 1830]
-        Energies = [1461, 2641]
+
+        ADC = [912, 1020]
+        Energies = [1292, 1461]
         try: os.mkdir("cal_plots")
         except OSError: pass
 
@@ -496,7 +492,7 @@ class DataProcessor():
 
         #energy estimator: pz correct, calc trap
         procs.AddTransform(pz_correct, {"rc":72}, input_waveform="blrmnlc_wf", output_waveform="pz_wf")
-        procs.AddTransform(trap_filter, {"rampTime":400, "flatTime":200}, input_waveform="pz_wf", output_waveform="trap_wf")
+        procs.AddTransform(trap_filter, {"rampTime":100, "flatTime":100}, input_waveform="pz_wf", output_waveform="trap_wf")
 
         procs.AddCalculator(trap_max, {}, input_waveform="trap_wf", output_name="trap_max")
         procs.AddCalculator(trap_max, {"method":"fixed_time","pickoff_sample":400}, input_waveform="trap_wf", output_name="trap_ft")
@@ -555,8 +551,6 @@ class DataProcessor():
         # df["drift_time"] = np.nan
 
         # for channel, df_chan in df.groupby("channel"):
-        #print( df_chan.channel.unique()[0] )
-        #quit()
         channel = (df_chan.channel.unique())[0]
 
         ae_chan = df_ae.loc[channel]
@@ -583,10 +577,7 @@ class DataProcessor():
         #Make a cut based on drift t0-t99 drift time
         df_chan["drift_time"] = df_chan[self.dt_max_param] - df_chan["t0est"]
         cut = df_chan["bl_cut"] & (df_chan.ae>0)&(df_chan.ae<2) & (df_chan[self.ecal_name] > min_e)
-        plt.close()
-        plt.hist(df_chan["drift_time"], bins=200)
-        plt.show()
-        quit()
+
         # df_cut = df_cut[(df_cut.drift_time > df_cut.drift_time.quantile(q=0.025))   & (df_cut.drift_time < df_cut.drift_time.quantile(q=0.975)) ]
         dt_max = df_chan[cut].drift_time.quantile(q=0.99)
 
@@ -616,7 +607,7 @@ class DataProcessor():
         weak_cut = df_chan["bl_cut"] & (df_chan.ae>-10)&(df_chan.ae<40) & (df_chan[self.ecal_name] > min_e) & (df_chan.drift_time < dt_max) & (df_chan.drift_time > 0)
 
         df_chan["is_training"] = training_cut
-        
+
         if True:
             f1 = plt.figure()
             grid = gs.GridSpec(2, 2, height_ratios=[3, 1], width_ratios = [1,3])
@@ -639,12 +630,13 @@ class DataProcessor():
 
             try: os.mkdir("training_plots")
             except OSError: pass
+
             f1.savefig("training_plots/chan{}_timepoints".format(channel))
             pc_fig.savefig("training_plots/chan{}_t50-99".format(channel))
             plt.close(f1)
             plt.close(pc_fig)
             # f2.savefig("training_plots/chan{}_waveforms".format(channel))
-
+    
         return df_chan
 
 
@@ -662,6 +654,7 @@ class DataProcessor():
             t2_file = os.path.join(self.t2_data_dir, "t2_run{}.h5".format(runNumber))
 
             df = pd.read_hdf(t2_file,key="data")
+
             tier1 = pd.read_hdf(t1_file,key=self.data_key)
             tier1 = tier1.drop({"channel", "energy", "timestamp"}, axis=1)
 
@@ -674,8 +667,8 @@ class DataProcessor():
         df_train.to_hdf(file_name, key="data", mode='w')
 
         #TODO: if the multisampling params changed in the middle of this run range, you're hosed.
-        #g4 = dl.Gretina4MDecoder(t1_file)
         g4 = dl.SIS3302Decoder(t1_file)
+
         if True:
             for channel, df_chan in df_train.groupby("channel"):
                 n_bins = 10
@@ -726,11 +719,11 @@ class DataProcessor():
 
         for b_lo, b_hi in zip(dt_bins[:-1], dt_bins[1:]):
             df_bin = df_train[(df_train.drift_time >= b_lo) & (df_train.drift_time<b_hi)]
+
             for i, (index, row) in enumerate(df_bin.iterrows()):
                 if index in exclude_list: continue
 
                 t1_file = os.path.join(self.t1_data_dir, "t1_run{}.h5".format(row.runNumber))
-                #g4 = dl.Gretina4MDecoder(t1_file)
                 g4 = dl.SIS3302Decoder(t1_file)
                 wf=g4.parse_event_data(row)
 
