@@ -43,6 +43,7 @@ def get_bege_detector_info(detector_name):
     df = pd.read_csv(bege_file_name, usecols=cols, names=col_names, index_col=0, skiprows=2)
 
     siggen_dict = get_bege_siggen_default(detector_name)
+
     siggen_dict["detector"]["xtal_HV"] = df.loc[int(detector_name[1:])]["operating_v"]
 
     return siggen_dict

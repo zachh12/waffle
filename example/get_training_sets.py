@@ -14,14 +14,15 @@ def main():
     proc = DataProcessor(detectorChanList=chanList)
 
     #Pygama processing
-    proc.tier0(runList, chanList)
+    #proc.tier0(runList, chanList)
 
     df = proc.tier1(runList, num_threads=4, overwrite=True)
     #exit()
 
     #Load all runs into one common DF
     df = proc.load_t2(runList)
-    #plt.hist(df['trap_max'], bins=200)
+    #plt.hist(df['trap_max'], bins=2000)
+    #plt.xlim(500, 2000)
     #plt.show()
     #quit()
     df = proc.tag_pulsers(df)

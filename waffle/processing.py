@@ -491,7 +491,7 @@ class DataProcessor():
         procs.AddCalculator(max_time, {}, input_waveform="blrmnlc_wf", output_name="t_max")
 
         #energy estimator: pz correct, calc trap
-        procs.AddTransform(pz_correct, {"rc":72}, input_waveform="blrmnlc_wf", output_waveform="pz_wf")
+        procs.AddTransform(pz_correct, {"rc":80}, input_waveform="blrmnlc_wf", output_waveform="pz_wf")
         procs.AddTransform(trap_filter, {"rampTime":100, "flatTime":100}, input_waveform="pz_wf", output_waveform="trap_wf")
 
         procs.AddCalculator(trap_max, {}, input_waveform="trap_wf", output_name="trap_max")

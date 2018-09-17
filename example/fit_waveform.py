@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -12,13 +13,12 @@ from siggen import PPC
 
 chan_dict = {
 66: "B8482",
-#692: "B8474"
 }
 
 def main(doPlot=False):
 
-    align_point = 0.95
-    wf_idx = 4
+    align_point = .95
+    wf_idx = 0
 
     chan = 66
     directory = "chan{}_8wfs".format(chan)
@@ -37,9 +37,9 @@ def main(doPlot=False):
     im = ImpurityModelEnds(detector)
     vm = VelocityModel(include_beta=False)
 
-    det_params = [ 9.76373631e-01,8.35875049e-03,-5.09732644e+00,-6.00749043e+00,
-                   4.74275220e+06,3.86911389e+06,6.22014783e+06,5.22077471e+06,
-                    -3.63516477e+00,-4.48184667e-01]
+    det_params = [ 9.760620428e-01,2.54128852e-02,63.52,-6.2836083e+00,
+                   5.727211e+06,4.963381e+06,8.687676e+06,6.859415e+06,
+                    -5.8659769e-02,-6.1733575e-02]
 
     lp.apply_to_detector(det_params[:2], detector)
     hp.apply_to_detector(det_params[2:4], detector)
@@ -61,7 +61,7 @@ def main(doPlot=False):
 
     fm = WaveformFitManager(wf, align_percent=align_point, detector=detector, align_idx=100)
 
-    fm.fit(numLevels=35, directory = wf_directory, new_level_interval=1000, numParticles=3)
+    fm.fit(numLevels=1000, directory = wf_directory, new_level_interval=1000, numParticles=3)
 
 
 if __name__=="__main__":

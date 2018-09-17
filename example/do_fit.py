@@ -52,7 +52,7 @@ def main(chan, doPlot=False):
         ("VelocityModel",       {"include_beta":False}),
         ("LowPassFilterModel",  {"order":2}),
         ("LowPassFilterModel",  {"order":2, "include_zeros":True}),
-        ("HiPassFilterModel",   {"order":2}),
+        ("HiPassFilterModel",   {"order":1}),
         ("OvershootFilterModel",{}),
         ("ImpurityModelEnds",   {}),
         ("TrappingModel",       {})
