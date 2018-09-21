@@ -127,8 +127,7 @@ class DataProcessor():
         # df = df.groupby("channel").apply(calibrate, energy_name="trap_max", out_name="ecal")
 
         return df
-
-
+        
     def calculate_previous_event_params(self, df_chan, baseline_meas ):
         #info for each event about the _previous_ event
         #set nan for the 0th component...
