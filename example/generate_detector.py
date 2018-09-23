@@ -14,11 +14,11 @@ from waffle.detectors import create_conf_file, generate_fields
 def main():
 
     # names = ["P42664A", "P42665A"]
-    names= ["B8482", "B8474"]
+    names= ["B8474"]
 
     for detector_name in names:
 
-        conf_name = os.path.join(os.environ['DATADIR'], "siggen", "config_files", "{}.conf".format(detector_name))
+        conf_name = os.path.join(os.environ['DATADIR'], "/siggen", "config_files", "{}.conf".format(detector_name))
 
         imp_min, imp_max = create_conf_file(detector_name, conf_name)
 

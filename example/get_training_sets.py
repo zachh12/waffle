@@ -5,7 +5,7 @@ from waffle.processing import *
 import matplotlib.pyplot as plt
 def main():
 
-    runList = np.arange(11510, 11511)#, 11600)
+    runList = np.arange(11510, 11551)#, 11600)
 
     mjdList = [600,
     582,583,580, 581,578, 579,
@@ -20,14 +20,14 @@ def main():
     #only take high gain channels for now
     chanList = [chan for chan in mjdList if chan%2==0]
 
-    chanList = [582, 632, 690]#580, 594, 598, 600, 608, 632, 640, 690, 694]
+    chanList = [692]#580, 594, 598, 600, 608, 632, 640, 690, 694]
 
     #data processing
 
     proc = DataProcessor(detectorChanList=chanList)
 
     #Pygama processing
-    runList = np.arange(11510, 11511)
+    #runList = np.arange(11541, 11551)
     #proc.tier0(runList, chanList)
     #df = proc.tier1(runList, num_threads=4, overwrite=True)
     #exit()
@@ -39,9 +39,9 @@ def main():
     df = df.groupby("channel").apply(proc.calibrate)
     df = df.groupby(["runNumber","channel"]).apply(proc.calculate_previous_event_params, baseline_meas="bl_int")
 
-    proc.calc_baseline_cuts(df, settle_time=25) #ms
-    proc.fit_pz(df)
-    proc.calc_ae_cut(df )
+    #proc.calc_baseline_cuts(df, settle_time=25) #ms
+    #proc.fit_pz(df)
+    #proc.calc_ae_cut(df )
 
     #calculate cut of good training waveforms
     df_bl = pd.read_hdf(proc.channel_info_file_name, key="baseline")
@@ -50,9 +50,9 @@ def main():
 
     proc.save_t2(df)
 
-    proc.save_training_data(runList, "training_data/training_set.h5")
+    #proc.save_training_data(runList, "training_data/training_set.h5")
 
-    n_waveforms = 8
+    n_waveforms = 50
     for chan in chanList:
         proc.save_subset(chan, n_waveforms, "training_data/training_set.h5", "training_data/chan{}_{}wfs.npz".format(chan, n_waveforms))
 

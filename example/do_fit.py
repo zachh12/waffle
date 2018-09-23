@@ -37,7 +37,7 @@ def main(chan, doPlot=False):
     # wf_idxs = [1,4,8,12]
 
     datadir= os.environ['DATADIR']
-    conf_file = datadir +"siggen/config_files/" + conf_name
+    conf_file = datadir +"/siggen/config_files/" + conf_name
 
     wf_conf = {
         "wf_file_name":wf_file,
@@ -45,14 +45,14 @@ def main(chan, doPlot=False):
         "align_idx":125,
         "num_samples":1000,
         "do_smooth":True,
-        "smoothing_type":"gaussian"
+        "smoothing_type":"gauss"
     }
 
     model_conf = [
         ("VelocityModel",       {"include_beta":False}),
         ("LowPassFilterModel",  {"order":2}),
         ("LowPassFilterModel",  {"order":2, "include_zeros":True}),
-        ("HiPassFilterModel",   {"order":2}),
+        ("HiPassFilterModel",   {"order":1}),
         ("OvershootFilterModel",{}),
         ("ImpurityModelEnds",   {}),
         ("TrappingModel",       {})

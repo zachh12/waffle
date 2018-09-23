@@ -18,26 +18,26 @@ chan_dict = {
 def main(doPlot=False):
 
     align_point = 0.95
-    wf_idx = 1
+    wf_idx = 8
 
     chan = 692
-    directory = "chan{}_8wfs".format(chan)
+    directory = "chan{}_50wfs".format(chan)
 
-    wf_file = "training_data/chan{}_8wfs.npz".format(chan)
+    wf_file = "training_data/chan{}_50wfs.npz".format(chan)
     conf_name = "{}.conf".format( chan_dict[chan] )
 
     datadir= os.environ['DATADIR']
-    conf_file = datadir +"siggen/config_files/" + conf_name
+    conf_file = datadir +"/siggen/config_files/" + conf_name
 
 
     detector = PPC( conf_file, wf_padding=100)
 
-    lp = LowPassFilterModel()
-    hp = HiPassFilterModel()
-    im = ImpurityModelEnds(detector.imp_avg_lims, detector.imp_grad_lims, detector.detector_length)
+    lp = LowPassFilterModel(detector)
+    hp = HiPassFilterModel(detector)
+    im = ImpurityModelEnds(detector)#.imp_avg_lims, detector.imp_grad_lims, detector.detector_length)
     vm = VelocityModel(include_beta=False)
 
-    det_params = [ 9.76373631e-01,8.35875049e-03,-5.09732644e+00,-6.00749043e+00,
+    det_params = [ 9.76373631e-01,8.35875049e-03,6.068291659e+01,-6.2836083e+00,
                    4.74275220e+06,3.86911389e+06,6.22014783e+06,5.22077471e+06,
                     -3.63516477e+00,-4.48184667e-01]
 

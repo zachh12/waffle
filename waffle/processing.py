@@ -686,13 +686,13 @@ class DataProcessor():
         n_bins_time = n_waveforms
 
         dt_bins = np.linspace(first_dt, last_dt, n_bins_time+1)
-
+        #dt_bins = np.linspace(first_dt, last_dt, 500)
         wfs_per_bin = 1
 
         wfs_saved = []
 
         for b_lo, b_hi in zip(dt_bins[:-1], dt_bins[1:]):
-            df_bin = df_train[(df_train.drift_time >= b_lo) & (df_train.drift_time<b_hi)]
+            df_bin = df_train[(df_train.drift_time >= b_lo) & (df_train.drift_time<b_hi) & (df_train.ecal > 2600) & (df_train.ecal < 2630)]
             for i, (index, row) in enumerate(df_bin.iterrows()):
                 if index in exclude_list: continue
 
