@@ -51,7 +51,7 @@ def main(chan, doPlot=False):
     model_conf = [
         ("VelocityModel",       {"include_beta":False}),
         ("LowPassFilterModel",  {"order":2}),
-        ("LowPassFilterModel",  {"order":2, "include_zeros":True}),
+        ("LowPassFilterModel",  {"order":2, "include_zeros":False}),
         ("HiPassFilterModel",   {"order":1}),
         ("OvershootFilterModel",{}),
         ("ImpurityModelEnds",   {}),
@@ -84,7 +84,7 @@ def main(chan, doPlot=False):
     fm = LocalFitManager(conf, num_threads=2)
 
     conf.save_config()
-    fm.fit(numLevels=1000, directory = directory,new_level_interval=5000, numParticles=3)
+    fm.fit(numLevels=1000, directory = directory,new_level_interval=5000, numParticles=10)
 
 
 if __name__=="__main__":

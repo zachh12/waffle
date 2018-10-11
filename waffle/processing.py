@@ -552,8 +552,8 @@ class DataProcessor():
         #Make a cut based on drift t0-t99 drift time
 
         df_chan["drift_time"] = df_chan[self.dt_max_param] - df_chan["t0est"]
-        cut = df_chan["bl_cut"] & (df_chan.ae>0)&(df_chan.ae<2) & (df_chan[self.ecal_name] > min_e)
-
+        cut = df_chan["bl_cut"] & (df_chan.ae>0)&(df_chan.ae<6) & (df_chan[self.ecal_name] > min_e)
+        #cut = df_chan["bl_cut"] & (df_chan.ae>0)&(df_chan.ae<6) & (df_chan[self.ecal_name] > min_e) 
         # df_cut = df_cut[(df_cut.drift_time > df_cut.drift_time.quantile(q=0.025))   & (df_cut.drift_time < df_cut.drift_time.quantile(q=0.975)) ]
         dt_max = df_chan[cut].drift_time.quantile(q=0.99)
 
@@ -682,17 +682,17 @@ class DataProcessor():
 
         first_dt = df_train.drift_time.min()
         last_dt = df_train.drift_time.max()
-
+        print(df_train)
         n_bins_time = n_waveforms
 
         dt_bins = np.linspace(first_dt, last_dt, n_bins_time+1)
-        #dt_bins = np.linspace(first_dt, last_dt, 500)
+
         wfs_per_bin = 1
 
         wfs_saved = []
 
-        for b_lo, b_hi in zip(dt_bins[:-1], dt_bins[1:]):
-            df_bin = df_train[(df_train.drift_time >= b_lo) & (df_train.drift_time<b_hi) & (df_train.ecal > 2600) & (df_train.ecal < 2630)]
+        '''for b_lo, b_hi in zip(dt_bins[:-1], dt_bins[1:]):
+            df_bin = df_train[(df_train.drift_time >= b_lo) & (df_train.drift_time<b_hi)]
             for i, (index, row) in enumerate(df_bin.iterrows()):
                 if index in exclude_list: continue
 
@@ -708,8 +708,27 @@ class DataProcessor():
                 wf.tp_50 = row.tp_50
 
                 wfs_saved.append(wf)
-                break
+                break'''
+        
+        exclude_list = []
+        for i in range(0, len(df_train)):
+            df_bin = df_train[(df_train.ecal >= 2600) & (df_train.ecal <= 2630)]
+            for i, (index, row) in enumerate(df_bin.iterrows()):
+                if index in exclude_list: continue
+                exclude_list.append(index)
+                t1_file = os.path.join(self.t1_data_dir, "t1_run{}.h5".format(row.runNumber))
+                g4 = dl.Gretina4MDecoder(t1_file)
+                wf=g4.parse_event_data(row)
 
+                wf.training_set_index = index
+                wf.amplitude = row.trap_max
+                wf.bl_slope = row.bl_slope
+                wf.bl_int = row.bl_int
+                wf.t0_estimate = row.t0est
+                wf.tp_50 = row.tp_50
+
+                wfs_saved.append(wf)
+                break
         np.savez(output_file_name, wfs=wfs_saved)
 
         if do_plot:

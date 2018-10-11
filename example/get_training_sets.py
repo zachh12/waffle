@@ -40,8 +40,8 @@ def main():
     df = df.groupby(["runNumber","channel"]).apply(proc.calculate_previous_event_params, baseline_meas="bl_int")
 
     #proc.calc_baseline_cuts(df, settle_time=25) #ms
-    #proc.fit_pz(df)
-    #proc.calc_ae_cut(df )
+    proc.fit_pz(df)
+    proc.calc_ae_cut(df )
 
     #calculate cut of good training waveforms
     df_bl = pd.read_hdf(proc.channel_info_file_name, key="baseline")
@@ -50,9 +50,9 @@ def main():
 
     proc.save_t2(df)
 
-    #proc.save_training_data(runList, "training_data/training_set.h5")
+    proc.save_training_data(runList, "training_data/training_set.h5")
 
-    n_waveforms = 50
+    n_waveforms = 2614
     for chan in chanList:
         proc.save_subset(chan, n_waveforms, "training_data/training_set.h5", "training_data/chan{}_{}wfs.npz".format(chan, n_waveforms))
 

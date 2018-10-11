@@ -13,8 +13,8 @@ from waffle.detectors import create_conf_file, generate_fields
 
 def main():
 
-    # names = ["P42664A", "P42665A"]
-    names= ["B8474"]
+    names = ["P42664A", "P42665A"]
+    #names= ["B8474"]
 
     for detector_name in names:
 
