@@ -528,6 +528,9 @@ class DataProcessor():
 
         # for channel, df_chan in df.groupby("channel"):
         channel = df_chan.channel.unique()[0]
+        #channel = (int)(df_chan['channel'][0])
+        print(channel)
+        #exit(3)
         ae_chan = df_ae.loc[channel]
         bl_chan = df_bl.loc[channel]
 
