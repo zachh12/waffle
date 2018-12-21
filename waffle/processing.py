@@ -682,7 +682,6 @@ class DataProcessor():
 
         first_dt = df_train.drift_time.min()
         last_dt = df_train.drift_time.max()
-        print(df_train)
         n_bins_time = n_waveforms
 
         dt_bins = np.linspace(first_dt, last_dt, n_bins_time+1)

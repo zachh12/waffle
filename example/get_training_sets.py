@@ -5,7 +5,7 @@ from waffle.processing import *
 import matplotlib.pyplot as plt
 def main():
 
-    runList = np.arange(11510, 11551)#, 11600)
+    runList = np.arange(11510, 11515)#, 11600)
 
     mjdList = [600,
     582,583,580, 581,578, 579,
@@ -18,9 +18,9 @@ def main():
     ]
     #578 == bad
     #only take high gain channels for now
-    chanList = [chan for chan in mjdList if chan%2==0]
+    #chanList = [chan for chan in mjdList if chan%2==0]
 
-    chanList = [692]#580, 594, 598, 600, 608, 632, 640, 690, 694]
+    chanList = [626]#580, 594, 598, 600, 608, 632, 640, 690, 694]
 
     #data processing
 
@@ -52,7 +52,7 @@ def main():
 
     proc.save_training_data(runList, "training_data/training_set.h5")
 
-    n_waveforms = 2614
+    n_waveforms = 8
     for chan in chanList:
         proc.save_subset(chan, n_waveforms, "training_data/training_set.h5", "training_data/chan{}_{}wfs.npz".format(chan, n_waveforms))
 
