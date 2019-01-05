@@ -748,6 +748,35 @@ class DataProcessor():
             # plt.hist(baseline_val_arr,bins="auto")
             # plt.show()
 
+    ''' 
+        Save the data for the list of waveforms with the following cuts.
+        This is to be used to fitting and NOT for training channels
+    '''
+    def save_dataset(self, runList, file_name, chanList=None, settle_time=20):
+        '''
+        settle_time in ms is minimum time since previous event (on same channel)
+        '''
+        if chanList is None: chanList = self.detectorChanList
+
+        for runNumber in runList:
+
+            t1_file = os.path.join(self.t1_data_dir,"t1_run{}.h5".format(runNumber))
+            t2_file = os.path.join(self.t2_data_dir, "t2_run{}.h5".format(runNumber))
+
+            df = pd.read_hdf(t2_file,key="data")
+            tier1 = pd.read_hdf(t1_file,key=self.data_key)
+            tier1 = tier1.drop({"channel", "energy", "timestamp"}, axis=1)
+
+            df = df.join(tier1, how="inner")
+
+        #Use whatever cuts are going to be used
+        cut = (df['avse'] > -1) & (df['avse'] < 6)
+        df = df[cut]
+        df.to_hdf(file_name, key="data", mode='w')
+
+    def save_wfs(self, channel, n_waveforms, training_data_file_name, output_file_name, exclude_list = [], do_plot=True):
+        print("do_something")
+
 # def fit_tail(wf_data):
 #     '''
 #     try to fit out the best tail parameters to flatten the top
