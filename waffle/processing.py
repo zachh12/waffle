@@ -528,9 +528,6 @@ class DataProcessor():
 
         # for channel, df_chan in df.groupby("channel"):
         channel = df_chan.channel.unique()[0]
-        #channel = (int)(df_chan['channel'][0])
-        print(channel)
-        #exit(3)
         ae_chan = df_ae.loc[channel]
         bl_chan = df_bl.loc[channel]
 
@@ -555,8 +552,8 @@ class DataProcessor():
         #Make a cut based on drift t0-t99 drift time
 
         df_chan["drift_time"] = df_chan[self.dt_max_param] - df_chan["t0est"]
-        cut = df_chan["bl_cut"] & (df_chan.ae>0)&(df_chan.ae<6) & (df_chan[self.ecal_name] > min_e)
-        #cut = df_chan["bl_cut"] & (df_chan.ae>0)&(df_chan.ae<6) & (df_chan[self.ecal_name] > min_e) 
+        cut = df_chan["bl_cut"] & (df_chan.ae>0)&(df_chan.ae<2) & (df_chan[self.ecal_name] > min_e)
+
         # df_cut = df_cut[(df_cut.drift_time > df_cut.drift_time.quantile(q=0.025))   & (df_cut.drift_time < df_cut.drift_time.quantile(q=0.975)) ]
         dt_max = df_chan[cut].drift_time.quantile(q=0.99)
 
