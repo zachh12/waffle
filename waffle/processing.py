@@ -774,8 +774,34 @@ class DataProcessor():
         df = df[cut]
         df.to_hdf(file_name, key="data", mode='w')
 
-    def save_wfs(self, channel, n_waveforms, training_data_file_name, output_file_name, exclude_list = [], do_plot=True):
-        print("do_something")
+    def save_wfs(self, channel, n_waveforms, training_data_file_name, output_file_name, exclude_list = [], do_plot=False):
+        df_dataset = pd.read_hdf(training_data_file_name,key="data")
+        df_dataset = df_train[df_train.channel == channel]
+
+        wfs_saved = []
+        exclude_list = []
+
+        cut = (df_dataset['ecal'] > 2600)
+        df = df_dataset[cut]
+        for i in range(0, len(df_train)):
+            
+            for i, (index, row) in enumerate(df.iterrows()):
+                if index in exclude_list: continue
+                exclude_list.append(index)
+                t1_file = os.path.join(self.t1_data_dir, "t1_run{}.h5".format(row.runNumber))
+                g4 = dl.Gretina4MDecoder(t1_file)
+                wf=g4.parse_event_data(row)
+
+                wf.training_set_index = index
+                wf.amplitude = row.trap_max
+                wf.bl_slope = row.bl_slope
+                wf.bl_int = row.bl_int
+                wf.t0_estimate = row.t0est
+                wf.tp_50 = row.tp_50
+
+                wfs_saved.append(wf)
+                break
+        np.savez(output_file_name, wfs=wfs_saved)
 
 # def fit_tail(wf_data):
 #     '''
