@@ -520,7 +520,7 @@ class DataProcessor():
     def tag_training_candidates(self, df_chan, df_bl, df_ae, settle_time=20):
         df_chan["is_training"] = 0
 
-        min_e = 1400 #keV
+        min_e = 2600 #keV
         # df["ae_pass"] = np.nan
         # df["ae"] = np.nan
         # df["bl_cut"] = np.nan
@@ -690,7 +690,7 @@ class DataProcessor():
 
         wfs_saved = []
 
-        '''for b_lo, b_hi in zip(dt_bins[:-1], dt_bins[1:]):
+        for b_lo, b_hi in zip(dt_bins[:-1], dt_bins[1:]):
             df_bin = df_train[(df_train.drift_time >= b_lo) & (df_train.drift_time<b_hi)]
             for i, (index, row) in enumerate(df_bin.iterrows()):
                 if index in exclude_list: continue
@@ -707,27 +707,8 @@ class DataProcessor():
                 wf.tp_50 = row.tp_50
 
                 wfs_saved.append(wf)
-                break'''
-        
-        exclude_list = []
-        for i in range(0, len(df_train)):
-            df_bin = df_train[(df_train.ecal >= 2600) & (df_train.ecal <= 2630)]
-            for i, (index, row) in enumerate(df_bin.iterrows()):
-                if index in exclude_list: continue
-                exclude_list.append(index)
-                t1_file = os.path.join(self.t1_data_dir, "t1_run{}.h5".format(row.runNumber))
-                g4 = dl.Gretina4MDecoder(t1_file)
-                wf=g4.parse_event_data(row)
-
-                wf.training_set_index = index
-                wf.amplitude = row.trap_max
-                wf.bl_slope = row.bl_slope
-                wf.bl_int = row.bl_int
-                wf.t0_estimate = row.t0est
-                wf.tp_50 = row.tp_50
-
-                wfs_saved.append(wf)
                 break
+        
         np.savez(output_file_name, wfs=wfs_saved)
 
         if do_plot:
@@ -748,6 +729,99 @@ class DataProcessor():
             # plt.hist(baseline_val_arr,bins="auto")
             # plt.show()
 
+
+    def tag_dataset(self, df_chan, df_bl, df_ae, settle_time=20):
+        df_chan["is_valid"] = 0
+
+        min_e = 1000 #keV
+
+        channel = df_chan.channel.unique()[0]
+        ae_chan = df_ae.loc[channel]
+        bl_chan = df_bl.loc[channel]
+
+        #A/E cut
+        avse0, avse1, avse2 = ae_chan.avse0, ae_chan.avse1, ae_chan.avse2
+        e = df_chan[self.ecal_name]
+        a_vs_e = df_chan[ae_chan.current_name] - (avse2*e**2 + avse1*e + avse0 )
+
+        df_chan["ae_pass"] = a_vs_e > ae_chan.avse_cut
+        df_chan["ae"] = (a_vs_e - ae_chan.avse_mean)/ae_chan.avse_std
+
+        #baseline cut
+        bl_cut = np.ones(len(df_chan), dtype=np.bool)
+
+        #Cut funny baselines
+        for param in ["bl_int", "bl_slope"]:
+            min_name = "{}_min".format(param)
+            max_name = "{}_max".format(param)
+            bl_cut &= (df_chan[param] > bl_chan[min_name]) & (df_chan[param] < bl_chan[max_name])
+        df_chan["bl_cut"] = bl_cut
+
+        #Make a cut based on drift t0-t99 drift time
+
+        df_chan["drift_time"] = df_chan[self.dt_max_param] - df_chan["t0est"]
+        cut = df_chan["bl_cut"] & (df_chan.ae>-1)&(df_chan.ae<10) & (df_chan[self.ecal_name] > min_e)
+
+        # df_cut = df_cut[(df_cut.drift_time > df_cut.drift_time.quantile(q=0.025))   & (df_cut.drift_time < df_cut.drift_time.quantile(q=0.975)) ]
+        dt_max = df_chan[cut].drift_time.quantile(q=0.99)
+
+        cut = cut & (df_chan.drift_time < dt_max) & (df_chan.drift_time > 0)
+        df_cut = df_chan[ cut ]
+        dt_ae = df_cut.drift_time
+
+        hist,bins = np.histogram(dt_ae, bins=100)
+
+        bin_centers = get_bin_centers(bins)
+        idxs_over_50 = hist > 0.1*np.amax(hist)
+        first_dt =  bin_centers[np.argmax(idxs_over_50)]
+        last_dt = bin_centers[  len(idxs_over_50) - np.argmax(idxs_over_50[::-1]) -1  ]
+
+        dt_cut = (df_chan.drift_time >= first_dt) & (df_chan.drift_time <= last_dt)
+        #dt_cut = df_chan.drift_time > 0
+        #Make a cut based on t50-t99 drift time (good for PC events)
+        pc_fig = plt.figure()
+        df_chan["t50_99"] = df_chan.tp_99 - df_chan.tp_50
+        df_pc = df_chan[ cut & (df_chan.drift_time >= first_dt) & (df_chan.drift_time <= last_dt) ]
+        cut_lo, cut_hi, __, __ = pdc.gaussian_cut(df_pc.t50_99, cut_sigma=3, plotAxis = plt.gca())
+        plt.xlabel("t50-t99 time")
+
+        t50_99_cut = (df_chan.t50_99 > cut_lo) & (df_chan.t50_99 < cut_hi)
+
+        #training_cut = cut & dt_cut & t50_99_cut & (df_chan.prev_t > settle_time)
+        training_cut = cut  & dt_cut & t50_99_cut & (df_chan.prev_t > settle_time)
+        weak_cut = df_chan["bl_cut"] & (df_chan.ae>-10)&(df_chan.ae<40) & (df_chan[self.ecal_name] > min_e) & (df_chan.drift_time < dt_max) & (df_chan.drift_time > 0)
+
+        df_chan["is_valid"] = training_cut
+
+        if True:
+            f1 = plt.figure()
+            grid = gs.GridSpec(2, 2, height_ratios=[3, 1], width_ratios = [1,3])
+            ax = plt.subplot(grid[0, 1])
+            ax_y = plt.subplot(grid[0, 0], sharey = ax)
+            ax_x = plt.subplot(grid[1, 1], sharex = ax)
+
+            ax_y.hist(df_cut.ae, bins="auto", histtype="step", orientation='horizontal')
+
+            ax_x.plot(bin_centers, hist, ls="steps")
+
+            ax_x.axvline(first_dt, c="r")
+            ax_x.axvline(last_dt, c="r")
+
+            ax.scatter(df_chan.drift_time[weak_cut&~training_cut], df_chan.ae[weak_cut&~training_cut], s=0.5, c="k" )
+            ax.scatter(df_chan.drift_time[training_cut], df_chan.ae[training_cut], s=0.5, c="g" )
+
+            ax_x.set_xlabel("Drift time [t0-95%]")
+            ax_y.set_ylabel("A vs E")
+
+            try: os.mkdir("training_plots")
+            except OSError: pass
+            f1.savefig("training_plots/chan{}_timepoints".format(channel))
+            pc_fig.savefig("training_plots/chan{}_t50-99".format(channel))
+            plt.close(f1)
+            plt.close(pc_fig)
+            # f2.savefig("training_plots/chan{}_waveforms".format(channel))
+
+        return df_chan
     ''' 
         Save the data for the list of waveforms with the following cuts.
         This is to be used to fitting and NOT for training channels
@@ -757,6 +831,8 @@ class DataProcessor():
         settle_time in ms is minimum time since previous event (on same channel)
         '''
         if chanList is None: chanList = self.detectorChanList
+
+        data_df = []
 
         for runNumber in runList:
 
@@ -769,22 +845,62 @@ class DataProcessor():
 
             df = df.join(tier1, how="inner")
 
-        #Use whatever cuts are going to be used
-        cut = (df['avse'] > -1) & (df['avse'] < 6)
-        df = df[cut]
-        df.to_hdf(file_name, key="data", mode='w')
+            df_set = df.loc[df.is_valid==1]
+            data_df.append(df_set )
 
-    def save_wfs(self, channel, n_waveforms, training_data_file_name, output_file_name, exclude_list = [], do_plot=False):
-        df_dataset = pd.read_hdf(training_data_file_name,key="data")
-        df_dataset = df_train[df_train.channel == channel]
+        df_set = pd.concat(data_df, axis=0)
+        df_set.to_hdf(file_name, key="data", mode='w')
+
+        #TODO: if the multisampling params changed in the middle of this run range, you're hosed.
+        g4 = dl.Gretina4MDecoder(t1_file)
+
+        if True:
+            for channel, df_chan in df_set.groupby("channel"):
+                n_bins = 10
+                dt_bins = np.linspace(df_chan.drift_time.min(), df_chan.drift_time.max(), n_bins+1)
+
+                f2 = plt.figure(figsize=(12,8))
+                for b_lo, b_hi in zip(dt_bins[:-1], dt_bins[1:]):
+                    df_bin = df_chan[(df_chan.drift_time >= b_lo) & (df_chan.drift_time<b_hi)]
+                    for i, (index, row) in enumerate(df_bin.iterrows()):
+                        if i>=50: break
+
+                        wf=g4.parse_event_data(row)
+                        wf_full = wf.get_waveform()
+                        wf_full -= row["bl_int"] + np.arange(len(wf_full))*row["bl_slope"]
+                        wf_full /= row[self.ecal_name]
+
+                        # t95_int = int(row[self.dt_max_param])
+                        t95_int = np.argmax(wf_full > 0.95)
+                        wf_plot = wf.data[t95_int-200:t95_int+100]
+                        if i == 0:
+                            p = plt.plot(wf_plot, alpha=0.1)
+                        else:
+                            plt.plot(wf_plot, c=p[0].get_color(), alpha=0.1)
+
+                # plt.show()
+                # exit()
+
+                try: os.mkdir("training_plots")
+                except OSError: pass
+                f2.savefig("training_plots/chan{}_waveforms".format(channel))
+                plt.close(f2)
+
+    def save_wfs(self, channel, n_waveforms, dataset_file_name, output_file_name, exclude_list = [], do_plot=False):
+        df_dataset = pd.read_hdf(dataset_file_name,key="data")
+        df_dataset = df_dataset[df_dataset.channel == channel]
 
         wfs_saved = []
         exclude_list = []
 
-        cut = (df_dataset['ecal'] > 2600)
+        #Any subcuts from the larger dataset
+        cut = (df_dataset['ecal'] > 2600) & (df_dataset['ecal'] < 2630)
+        #cut = (df_dataset['ae'] < 1)
         df = df_dataset[cut]
-        for i in range(0, len(df_train)):
-            
+        #df = df_dataset
+        print(len(df))
+
+        for i in range(0, n_waveforms):
             for i, (index, row) in enumerate(df.iterrows()):
                 if index in exclude_list: continue
                 exclude_list.append(index)
